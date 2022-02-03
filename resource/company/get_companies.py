@@ -24,8 +24,6 @@ class GetCompanies(MethodResource, Resource):
          })
     @use_kwargs({
         'name': fields.Str(required=False),
-        'ecosystem_role': fields.DelimitedList(fields.Str(), required=False),
-        'entity_type': fields.DelimitedList(fields.Str(), required=False),
         'startup_only': fields.Bool(required=False),
         'corebusiness_only': fields.Bool(required=False),
         'taxonomy_values': fields.DelimitedList(fields.Str(), required=False),
