@@ -219,27 +219,30 @@ class DB:
             query = query.filter(self.tables["Company"].is_cybersecurity_core_business.is_(True))
 
         if "taxonomy_values" in filters:
-            taxonomy_values = filters["taxonomy_values"] if isinstance(filters["taxonomy_values"], list) else \
-                [int(value_id) for value_id in filters["taxonomy_values"].split(",") if value_id.isdigit()]
+            if isinstance(filters["taxonomy_values"], list):
+                taxonomy_values = filters["taxonomy_values"]
+            else:
+                taxonomy_values = [int(i) for i in filters["taxonomy_values"].split(",") if i.isdigit()]
 
             if len(taxonomy_values) > 0:
                 tch = taxonomy_values
 
                 while len(tch) > 0:
                     taxonomy_values = tch
-                    tch = self.session\
+                    tch = self.session \
                         .query(self.tables["TaxonomyValueHierarchy"]) \
                         .filter(self.tables["TaxonomyValueHierarchy"].parent_value.in_(tch)).all()
                     tch = [t.child_value for t in tch]
 
-                companies_filtered_by_taxonomy = self.session \
-                    .query(self.tables["TaxonomyAssignment"]) \
-                    .with_entities(self.tables["TaxonomyAssignment"].company) \
-                    .distinct(self.tables["TaxonomyAssignment"].company) \
-                    .filter(self.tables["TaxonomyAssignment"].taxonomy_value.in_(taxonomy_values)) \
-                    .subquery()
+                for tv in taxonomy_values:
+                    companies_filtered_by_taxonomy = self.session \
+                        .query(self.tables["TaxonomyAssignment"]) \
+                        .with_entities(self.tables["TaxonomyAssignment"].company) \
+                        .distinct(self.tables["TaxonomyAssignment"].company) \
+                        .filter(self.tables["TaxonomyAssignment"].taxonomy_value == tv) \
+                        .subquery()
 
-                query = query.filter(self.tables["Company"].id.in_(companies_filtered_by_taxonomy))
+                    query = query.filter(self.tables["Company"].id.in_(companies_filtered_by_taxonomy))
 
         return query
 
@@ -277,16 +280,10 @@ class DB:
             query = query.filter(self.tables["Article"].is_created_by_admin.is_(filters["is_created_by_admin"]))
 
         if "taxonomy_values" in filters:
-            tmp_taxonomy_values = filters["taxonomy_values"] if isinstance(filters["taxonomy_values"], list) \
-                else filters["taxonomy_values"].split(",")
-            taxonomy_values = []
-
-            for tv in tmp_taxonomy_values:
-                if tv.isdigit():
-                    taxonomy_values.append(int(tv))
-                else:
-                    db_values = self.get(self.tables["TaxonomyValue"], {"name": tv})
-                    taxonomy_values += [v.id for v in db_values]
+            if isinstance(filters["taxonomy_values"], list):
+                taxonomy_values = filters["taxonomy_values"]
+            else:
+                taxonomy_values = [int(i) for i in filters["taxonomy_values"].split(",") if i.isdigit()]
 
             if len(taxonomy_values) > 0:
                 tch = taxonomy_values
@@ -298,14 +295,15 @@ class DB:
                         .filter(self.tables["TaxonomyValueHierarchy"].parent_value.in_(tch)).all()
                     tch = [t.child_value for t in tch]
 
-                article_filtered_by_taxonomy = self.session \
-                    .query(self.tables["ArticleTaxonomyTag"]) \
-                    .with_entities(self.tables["ArticleTaxonomyTag"].article) \
-                    .distinct(self.tables["ArticleTaxonomyTag"].article) \
-                    .filter(self.tables["ArticleTaxonomyTag"].taxonomy_value.in_(taxonomy_values)) \
-                    .subquery()
+                for tv in taxonomy_values:
+                    article_filtered_by_taxonomy = self.session \
+                        .query(self.tables["ArticleTaxonomyTag"]) \
+                        .with_entities(self.tables["ArticleTaxonomyTag"].article) \
+                        .distinct(self.tables["ArticleTaxonomyTag"].article) \
+                        .filter(self.tables["ArticleTaxonomyTag"].taxonomy_value == tv) \
+                        .subquery()
 
-                query = query.filter(self.tables["Article"].id.in_(article_filtered_by_taxonomy))
+                    query = query.filter(self.tables["Article"].id.in_(article_filtered_by_taxonomy))
 
         if "companies" in filters:
             article_filtered_by_companies = self.session \
